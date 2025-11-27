@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Jobs Table - Supabase Setup</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .sql { background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+        button { background: #3182ce; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 10px; }
+        button:hover { background: #2c5282; }
+        .instructions { background: #e6fffa; border-left: 4px solid #38b2ac; padding: 15px; margin: 20px 0; }
+        .success { background: #c6f6d5; border-left: 4px solid #38a169; padding: 15px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Create Jobs Table for LinkedIn Scraper</h1>
+
+    <div class="instructions">
+        <h3>Setup Instructions:</h3>
+        <ol>
+            <li>Open your <a href="https://supabase.com/dashboard/project/ohxveapplmhyhdrkyrtq/sql" target="_blank">Supabase SQL Editor</a></li>
+            <li>Copy and paste the SQL below</li>
+            <li>Click "Run" to create the table</li>
+            <li>Run your scraper: <code>python3 linkedin_jobs_search_scraper.py</code></li>
+            <li>Load data to DB: <code>python3 csv_to_supabase.py</code></li>
+        </ol>
+    </div>
+
+    <h3>SQL to Create Table:</h3>
+    <button onclick="copyToClipboard()">Copy SQL</button>
+    <div class="sql" id="sql-code">-- Table for storing LinkedIn scraped jobs
+CREATE TABLE IF NOT EXISTS public.scraped_jobs (
+  job_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  linkedin_job_id TEXT UNIQUE, -- Job ID extracted from LinkedIn URL
+  title TEXT NOT NULL,
+  company TEXT NOT NULL,
+  location TEXT,
+  date_posted_text TEXT, -- Original text from LinkedIn
+  logo_url TEXT,
+  job_url TEXT UNIQUE NOT NULL,
+  search_query TEXT, -- What search query found this job
+  scraped_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_linkedin_id ON public.scraped_jobs(linkedin_job_id);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_company ON public.scraped_jobs(company);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_location ON public.scraped_jobs(location);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_search_query ON public.scraped_jobs(search_query);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_created_at ON public.scraped_jobs(created_at);
+
+-- Row Level Security
+ALTER TABLE public.scraped_jobs ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Authenticated users can view scraped jobs" ON public.scraped_jobs
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert scraped jobs" ON public.scraped_jobs
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');</div>
+
+    <div class="success">
+        <h3>Next Steps:</h3>
+        <ol>
+            <li><strong>Run scraper:</strong> <code>python3 linkedin_jobs_search_scraper.py</code></li>
+            <li><strong>Load to database:</strong> <code>python3 csv_to_supabase.py</code></li>
+            <li><strong>Check results:</strong> Visit <a href="http://localhost:3000/dashboard">dashboard</a></li>
+        </ol>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const sqlElement = document.getElementById('sql-code');
+            navigator.clipboard.writeText(sqlElement.textContent).then(() => {
+                alert('SQL copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
+
